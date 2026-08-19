@@ -1,0 +1,160 @@
+-- Roblox Studio LocalScript
+-- Đặt trong StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+-- ===== CÀI ĐẶT =====
+local NORMAL_SPEED = 16
+local SPRINT_SPEED = 28
+local NORMAL_JUMP = 50
+local SUPER_JUMP = 90
+local DASH_POWER = 80
+local DASH_COOLDOWN = 1
+
+local sprintEnabled = false
+local superJumpEnabled = false
+local canDash = true
+
+local character
+local humanoid
+local rootPart
+
+-- ===== NHÂN VẬT =====
+local function setupCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+
+	humanoid.WalkSpeed = sprintEnabled and SPRINT_SPEED or NORMAL_SPEED
+	humanoid.JumpPower = superJumpEnabled and SUPER_JUMP or NORMAL_JUMP
+end
+
+if player.Character then
+	setupCharacter(player.Character)
+end
+
+player.CharacterAdded:Connect(setupCharacter)
+
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "ControlGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(190, 300)
+frame.Position = UDim2.new(0, 15, 0.5, -150)
+frame.BackgroundTransparency = 0.15
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "⚙ CONTROL"
+title.TextScaled = true
+title.Parent = frame
+
+local function createButton(text, y)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, -20, 0, 45)
+	button.Position = UDim2.new(0, 10, 0, y)
+	button.Text = text
+	button.TextScaled = true
+	button.Parent = frame
+
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = button
+
+	return button
+end
+
+local sprintButton = createButton("🏃 Sprint: OFF", 50)
+local jumpButton = createButton("🦘 Super Jump: OFF", 105)
+local dashButton = createButton("⚡ DASH", 160)
+local resetButton = createButton("🔄 Reset", 215)
+
+-- ===== SPRINT =====
+local function updateSprint()
+	if humanoid then
+		humanoid.WalkSpeed = sprintEnabled and SPRINT_SPEED or NORMAL_SPEED
+	end
+
+	sprintButton.Text = sprintEnabled
+		and "🏃 Sprint: ON"
+		or "🏃 Sprint: OFF"
+end
+
+sprintButton.Activated:Connect(function()
+	sprintEnabled = not sprintEnabled
+	updateSprint()
+end)
+
+-- ===== SUPER JUMP =====
+local function updateJump()
+	if humanoid then
+		humanoid.JumpPower = superJumpEnabled and SUPER_JUMP or NORMAL_JUMP
+	end
+
+	jumpButton.Text = superJumpEnabled
+		and "🦘 Super Jump: ON"
+		or "🦘 Super Jump: OFF"
+end
+
+jumpButton.Activated:Connect(function()
+	superJumpEnabled = not superJumpEnabled
+	updateJump()
+end)
+
+-- ===== DASH =====
+local function dash()
+	if not canDash or not rootPart then
+		return
+	end
+
+	canDash = false
+
+	local direction = humanoid.MoveDirection
+
+	if direction.Magnitude < 0.1 then
+		direction = rootPart.CFrame.LookVector
+	end
+
+	rootPart.AssemblyLinearVelocity =
+		Vector3.new(
+			direction.X * DASH_POWER,
+			rootPart.AssemblyLinearVelocity.Y,
+			direction.Z * DASH_POWER
+		)
+
+	task.delay(DASH_COOLDOWN, function()
+		canDash = true
+	end)
+end
+
+dashButton.Activated:Connect(dash)
+
+-- PC: phím Q để Dash
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+
+	if input.KeyCode == Enum.KeyCode.Q then
+		dash()
+	end
+end)
+
+-- ===== RESET =====
+resetButton.Activated:Connect(function()
+	if humanoid then
+		humanoid.Health = 0
+	end
+end)
